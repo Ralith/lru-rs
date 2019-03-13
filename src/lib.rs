@@ -55,12 +55,13 @@
 //! }
 //! ```
 
+#[cfg(test)]
 extern crate hashbrown;
 #[cfg(test)]
 extern crate scoped_threadpool;
 
-use hashbrown::hash_map::DefaultHashBuilder;
-use hashbrown::HashMap;
+use std::collections::HashMap;
+use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::iter::FusedIterator;
 use std::marker::PhantomData;
@@ -108,7 +109,7 @@ impl<K, V> LruEntry<K, V> {
 }
 
 /// An LRU Cache
-pub struct LruCache<K, V, S = DefaultHashBuilder> {
+pub struct LruCache<K, V, S = RandomState> {
     map: HashMap<KeyRef<K>, Box<LruEntry<K, V>>, S>,
     cap: usize,
 
@@ -157,7 +158,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// use lru::LruCache;
     ///
     /// let s = DefaultHashBuilder::default();
-    /// let mut cache: LruCache<isize, &str> = LruCache::with_hasher(10, s);
+    /// let mut cache: LruCache<isize, &str, DefaultHashBuilder> = LruCache::with_hasher(10, s);
     /// ```
     pub fn with_hasher(cap: usize, hash_builder: S) -> LruCache<K, V, S> {
         LruCache::construct(cap, HashMap::with_capacity_and_hasher(cap, hash_builder))
@@ -621,6 +622,12 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
             (*self.head).next = node;
             (*(*node).next).prev = node;
         }
+    }
+}
+
+impl<K: Hash + Eq, V, S: BuildHasher + Default> Default for LruCache<K, V, S> {
+    fn default() -> Self {
+        LruCache::with_hasher(usize::MAX, S::default())
     }
 }
 
